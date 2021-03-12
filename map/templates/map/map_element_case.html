@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quick Start - Leaflet</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+          integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+          crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+            integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+            crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-ant-path" type="text/javascript"></script>
+</head>
+<body>
+<div id="mapid" style="height: 800px; position: relative;"></div>
+<script>
+    var mymap = L.map('mapid').setView([22.601964, 114.056956], 12);
+
+    L.tileLayer('https://www.google.com/maps/vt?lyrs=s&gl=us&x={x}&y={y}&z={z}', {
+        tileSize: 256,
+        maxZoom: 21,
+    }).addTo(mymap);
+
+    var latlngs = [
+        [22.544001, 114.135002],
+        [22.547001, 114.139002],
+        [22.556001, 114.127002]
+    ];
+
+    const options = {
+        use: L.polyline,
+        delay: 2000,
+        dashArray: [10, 20],
+        weight: 5,
+        color: "#0000FF",
+        pulseColor: "#FFFFFF"
+    };
+
+    const path = L.polyline.antPath(latlngs, options);
+    path.addTo(mymap);
+
+    var marker = L.marker([22.601964, 114.056956]).addTo(mymap)
+        .bindPopup('A pretty CSS3 popup.<br> Easily customizable.')
+        .openPopup();
+
+    var circle = L.circle([22.701964, 114.056956], {
+        color: 'red',
+        fillColor: '#f03',
+        fillOpacity: 0.5,
+        radius: 500
+    }).addTo(mymap);
+
+    var polygon = L.polygon([
+        [22.554001, 114.135002],
+        [22.555001, 114.126002],
+        [22.556001, 114.137002]
+    ]).addTo(mymap);
+
+    //Add popup
+    marker.bindPopup("<b>Hello world!</b><br>I am a popup.").openPopup();
+    circle.bindPopup("I am a circle.");
+    polygon.bindPopup("I am a polygon.");
+
+    //Popup upon click event
+    var popup = L.popup();
+
+    function onMapClick(e) {
+        popup
+            .setLatLng(e.latlng)
+            .setContent("You clicked the map at " + e.latlng.toString())
+            .openOn(mymap);
+    }
+
+
+    mymap.on('click', onMapClick);
+</script>
+</body>
+</html>

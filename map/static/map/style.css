@@ -1,0 +1,24 @@
+
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+#main-content {
+    /*横向1：6，control-panel: mapid*/
+    display: flex;
+    /*纵向铺满*/
+    align-items: stretch;
+    height: 100%;
+}
+
+#control-panel {
+    flex: 5;
+
+    height: 100%;
+}
+
+#mapid {
+    flex: 11;
+}

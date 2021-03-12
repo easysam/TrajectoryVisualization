@@ -1,0 +1,152 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quick Start - Leaflet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {#  加载leaflet  #}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+          integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+          crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+            integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+            crossorigin=""></script>
+    {#  加载 ant path  #}
+    <script src="https://unpkg.com/leaflet-ant-path" type="text/javascript"></script>
+
+    {#  加载jQuery  #}
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.0.js"></script>
+    {#  加载静态文件  #}
+    <link href="{% static 'map/style.css' %}" rel="stylesheet" type="text/css"/>
+
+
+</head>
+<body>
+<div id="main-content">
+    <div id="control-panel" style="display: flex; flex-direction: column">
+        <h2 style="text-align: center; flex: 0 0 auto; margin: 5px">Trajectory analysis</h2>
+        <div style="flex: 0 0 auto; padding: 5px;">
+            <label>Select License</label>
+            <select onchange="javascript:location.href = this.value;">
+                {% for l in licenses %}
+                    <option value="{% url 'map:index' %}?plate={{ l }}"
+                            {% if l == license %}selected{% endif %}>{{ l }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {#轨迹数据列表#}
+        <ul style="flex: 0 1 auto; overflow: auto;" id="trajectory-data">
+            {% for point in trajectory|slice:":100" %}
+                <li>{{ point.plate }}, {{ point.color }}, {{ point.longitude }}, {{ point.latitude }},
+                    {{ point.timestamp }}, {{ point.velocity }}
+                </li>
+            {% endfor %}
+        </ul>
+        {#Charging event list.#}
+        <ol style="flex: 0 1 auto; overflow: auto; margin: 0" start="0">
+            {% for e in ce %}
+                <li>
+                    <a href='javascript:draw_ce_trajectory("{{ license }}", {{ forloop.counter0 }})'> {{ e.begin_time }}
+                        - {{ e.end_time }} - {{ e.cs_name }}</a></li>
+            {% endfor %}
+        </ol>
+    </div>
+    <div id="mapid"></div>
+</div>
+
+<script>
+    var point_markers = []
+    function open_markers(point) {
+        console.log(point)
+        point_markers[point].openPopup()
+    }
+    function draw_ce_trajectory(license, index) {
+        console.log('Getting ce trajectory, license and index is:', license, index)
+        $.ajax({
+            url: "{% url 'map:ce_trajectory' %}",
+            data: {
+                license: license,
+                index: index,
+            },
+            success: function (result) {
+                var ce_trajectory = JSON.parse(result)
+                console.log(ce_trajectory)
+
+                var latlngs = []
+
+                var ce_trajectory_li_html = []
+                for (point in ce_trajectory) {
+                    latlngs.push([ce_trajectory[point]['latitude'], ce_trajectory[point]['longitude']])
+                    point_markers.push(L.marker([ce_trajectory[point]['latitude'], ce_trajectory[point]['longitude']])
+                        .addTo(mymap).bindPopup(ce_trajectory[point]['index'] + ', ' + ce_trajectory[point]['timestamp'] + ', <br/>' + ce_trajectory[point]['latitude'] + ', ' + ce_trajectory[point]['longitude'] + ', <br/>velocity:' + ce_trajectory[point]['velocity'])
+                        .openPopup()
+                    )
+
+                    {# 更新轨迹数据列表为ce的轨迹 #}
+                    ce_trajectory_li_html.push('<li><a href="javascript:open_markers(' + point + ')">' + ce_trajectory[point]['index'] + ', ' + ce_trajectory[point]['plate'] + ', ' + ce_trajectory[point]['color'] + ', ' +
+                        ce_trajectory[point]['longitude'] + ', ' + ce_trajectory[point]['latitude'] + ' | ' +
+                        ce_trajectory[point]['timestamp'] + ', ' + ce_trajectory[point]['velocity'] + '</a></li>')
+                }
+
+                const options = {
+                    use: L.polyline,
+                    delay: 2000,
+                    dashArray: [10, 20],
+                    weight: 3,
+                    color: "#0000FF",
+                    pulseColor: "#FFFFFF"
+                };
+
+                const path = L.polyline.antPath(latlngs, options);
+                path.addTo(mymap);
+
+                {#  更新轨迹数据显示  #}
+                $('#trajectory-data').empty().html(ce_trajectory_li_html)
+            }
+        })
+    }
+
+    {#MAIN#}
+    var mymap = L.map('mapid').setView([22.601964, 114.085956], 12);
+
+    L.tileLayer('https://www.google.com/maps/vt?lyrs=s&gl=us&x={x}&y={y}&z={z}', {
+        tileSize: 256,
+        maxZoom: 21,
+    }).addTo(mymap);
+
+    {#Add charging station to map.#}
+    {% for cs in cs_info %}
+        var cs_{{ cs.name }} = L.circle([{{ cs.latitude }}, {{ cs.longitude }}], {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.1,
+            radius: {{ cs.capacity }} * 1.5
+        }).addTo(mymap);
+        cs_{{ cs.name }}.bindPopup('{{ cs.name }}, {{ cs.latitude }}, {{ cs.longitude }}, {{ cs.capacity }}');
+    {% endfor %}
+
+    {#  Add points in trajectory to map.  #}
+    {% comment %}    {% for point in trajectory|slice:":1200" %}
+            L.marker([{{ point.latitude }}, {{ point.longitude }}]).addTo(mymap)
+                .bindPopup('{{ point }}');
+        {% endfor %}{% endcomment %}
+
+    {#Add trajectory line to map.#}
+    {% comment %}    var latlngs = [
+                {% for point in trajectory|slice:":1200" %}[{{ point.latitude }}, {{ point.longitude }}],{% endfor %}
+        ]
+        const options = {
+            use: L.polyline,
+            delay: 2000,
+            dashArray: [10, 20],
+            weight: 3,
+            color: "#0000FF",
+            pulseColor: "#FFFFFF"
+        };
+        const path = L.polyline.antPath(latlngs, options);
+        path.addTo(mymap);{% endcomment %}
+
+</script>
+</body>
+</html>
